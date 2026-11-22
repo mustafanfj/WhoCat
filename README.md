@@ -42,20 +42,13 @@ What we found:
 
 ## Demo
 
-`demo/` is a front-door simulator. Pick a home, choose who comes to the door, and see both checks, the scores and the decision; switch between our model and PetFace's, between the full door rule and a plain threshold, and between a clear photo and a door-camera photo. "Run every visit" scores the whole home.
+`demo/` is a front-door simulator: one visitor, the normal door (PetFace model, one threshold) and the WhoCat door (our model and the full door rule) side by side, with both checks and scores. With the live server you can enrol your own cat from the webcam and test visitors.
 
 ```bash
-# 1. once, after the embedding caches exist (scripts/03_embed.py): sample homes + tuned thresholds
-python demo/export_bundle.py --ours ckpt:../checkpoints/arc_coat_door/best.pt
-
-# 2a. static mode: the page runs fully in the browser from the bundle
-python -m http.server 8000 --directory demo/web
-
-# 2b. live mode: also embed your own cat photos with the real models
-python demo/server.py --ours ckpt:../checkpoints/arc_coat_door/best.pt --port 8000
+python demo/server.py --port 8123     # then open http://localhost:8123
 ```
 
-Open http://localhost:8000 (on a remote machine: `ssh -L 8000:localhost:8000 <machine>`). The bundle contains PetFace face crops, so it is not committed; keep it for research use as the PetFace licence requires.
+Setup, static mode and the lab-machine tunnel are in [demo/README.md](demo/README.md).
 
 ## Reproducing the paper
 

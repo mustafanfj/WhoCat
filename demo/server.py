@@ -1,8 +1,9 @@
 """Live demo server: the demo page plus an /api/embed endpoint that runs the real models on your photos.
 
-  python demo/export_bundle.py --ours ckpt:../checkpoints/arc_coat_door/best.pt   # once: sample homes + thresholds
-  python demo/server.py --ours ckpt:../checkpoints/arc_coat_door/best.pt --port 8000
-then open http://localhost:8000 (over SSH: ssh -L 8000:localhost:8000 <machine>).
+  python demo/export_bundle.py --ours ckpt:../checkpoints/arc_coat_door/best.pt   # once, on the training machine
+  python demo/server.py                       # our model from checkpoints/arc_coat_door, PetFace's from checkpoints/petface
+then open http://localhost:8000 (over SSH: ssh -L 8000:localhost:8000 <machine>). The browser only lets the page
+use the camera on localhost or https, so open it as localhost, not by the machine's IP address.
 
 Uploaded photos go through the OpenCV cat-face detector and the crop calibrated to PetFace's aligned
 framing; if no face is found, the centre square is used. Nothing is stored on disk.
@@ -30,24 +31,27 @@ from whocat.degrade import degrade  # noqa: E402
 from whocat.models import build  # noqa: E402
 
 CASCADE = ROOT / "edge" / "models" / "haarcascade_frontalcatface_extended.xml"
-DEFAULT_CROP = dict(crop_dx=0.0, crop_dy=0.0, crop_scale=1.6)
+# Detector crop calibrated on 600 PetFace validation images (scripts/16_export_edge.py), so that a
+# detected face is framed like PetFace's aligned crops. --calibrate re-runs it (needs the dataset).
+CALIBRATED_CROP = dict(crop_dx=0.01, crop_dy=-0.0525, crop_scale=1.12, min_face_px=40, scale_factor=1.05, min_neighbors=3)
 
 
-def load_crop_calibration():
-    """Crop calibrated on PetFace val images (as for the edge package); falls back to a generic crop."""
+def load_crop_calibration(recalibrate=False):
+    if not recalibrate:
+        return CALIBRATED_CROP
     try:
         spec = importlib.util.spec_from_file_location("exp", ROOT / "scripts" / "16_export_edge.py")
         exp = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(exp)
         from whocat.data import load_eval_images
-        return exp.calibrate_detector(load_eval_images(), CASCADE, n=600)
+        return {**CALIBRATED_CROP, **exp.calibrate_detector(load_eval_images(), CASCADE, n=600)}
     except Exception as ex:  # noqa: BLE001
-        print("crop calibration skipped:", ex)
-        return DEFAULT_CROP
+        print("re-calibration skipped, using the stored crop:", ex)
+        return CALIBRATED_CROP
 
 
 class Embedder:
-    def __init__(self, names, device):
+    def __init__(self, names, device, recalibrate=False):
         self.device = device
         self.models = {}
         for key, name in names.items():
@@ -55,7 +59,7 @@ class Embedder:
             self.models[key] = m
             print("loaded", key, name)
         self.cc = cv2.CascadeClassifier(str(CASCADE))
-        self.crop_cfg = load_crop_calibration()
+        self.crop_cfg = load_crop_calibration(recalibrate)
         self.lock = threading.Lock()   # one request on the GPU at a time
 
     def face(self, img):
@@ -66,13 +70,14 @@ class Embedder:
         small = cv2.resize(bgr, (int(w * f), int(h * f))) if f < 1 else bgr
         f = min(f, 1.0)
         g = cv2.equalizeHist(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY))
-        boxes = self.cc.detectMultiScale(g, scaleFactor=1.05, minNeighbors=3, minSize=(30, 30))
+        c = self.crop_cfg
+        mp = int(c.get("min_face_px", 40))
+        boxes = self.cc.detectMultiScale(g, scaleFactor=c.get("scale_factor", 1.05), minNeighbors=int(c.get("min_neighbors", 3)), minSize=(mp, mp))
         if len(boxes) == 0:
             s = min(h, w)
             y0, x0 = (h - s) // 2, (w - s) // 2
             return Image.fromarray(rgb[y0:y0 + s, x0:x0 + s]).resize((224, 224), Image.BICUBIC), False
         x, y, bw, bh = max(boxes, key=lambda b: b[2] * b[3]) / f
-        c = self.crop_cfg
         cx, cy = x + bw / 2 + c["crop_dx"] * bw, y + bh / 2 + c["crop_dy"] * bw
         half = c["crop_scale"] * bw / 2
         x0, y0, x1, y1 = (int(round(v)) for v in (cx - half, cy - half, cx + half, cy + half))
@@ -148,17 +153,23 @@ def make_handler(emb):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ours", required=True)
+    from whocat import paths
+    ap.add_argument("--ours", default=f"ckpt:{paths.CKPT / 'arc_coat_door' / 'best.pt'}")
     ap.add_argument("--base", default="petface")
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--host", default="127.0.0.1")
+    ap.add_argument("--calibrate", action="store_true", help="re-fit the detector crop on PetFace (needs the dataset)")
     args = ap.parse_args()
     if not (HERE / "web" / "bundle" / "bundle.json").exists():
         sys.exit("Run demo/export_bundle.py first: the page needs the sample homes and tuned thresholds.")
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    emb = Embedder({"ours": args.ours, "petface": args.base}, dev)
+    for need in (Path(args.ours[5:]) if args.ours.startswith("ckpt:") else None, paths.PETFACE_WEIGHTS):
+        if need is not None and not need.exists():
+            sys.exit(f"Missing {need}. Copy the weights there (see demo/README.md), or set WHOCAT_ROOT.")
+    emb = Embedder({"ours": args.ours, "petface": args.base}, dev, args.calibrate)
     srv = ThreadingHTTPServer((args.host, args.port), make_handler(emb))
-    print(f"WhoCat demo on http://{args.host}:{args.port}  (device: {dev})")
+    shown = "localhost" if args.host in ("127.0.0.1", "0.0.0.0") else args.host
+    print(f"WhoCat demo on http://{shown}:{args.port}  (device: {dev}). Ctrl+C to stop.")
     srv.serve_forever()
 
 
