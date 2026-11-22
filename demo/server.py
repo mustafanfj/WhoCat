@@ -156,12 +156,12 @@ def main():
     from whocat import paths
     ap.add_argument("--ours", default=f"ckpt:{paths.CKPT / 'arc_coat_door' / 'best.pt'}")
     ap.add_argument("--base", default="petface")
-    ap.add_argument("--port", type=int, default=8000)
+    ap.add_argument("--port", type=int, default=8123)
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--calibrate", action="store_true", help="re-fit the detector crop on PetFace (needs the dataset)")
     args = ap.parse_args()
     if not (HERE / "web" / "bundle" / "bundle.json").exists():
-        sys.exit("Run demo/export_bundle.py first: the page needs the sample homes and tuned thresholds.")
+        sys.exit(f"No bundle in {HERE / 'web' / 'bundle'}. Copy the exported bundle folder there (demo/export_bundle.py makes it).")
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     for need in (Path(args.ours[5:]) if args.ours.startswith("ckpt:") else None, paths.PETFACE_WEIGHTS):
         if need is not None and not need.exists():
