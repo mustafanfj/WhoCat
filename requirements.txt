@@ -1,0 +1,14 @@
+# torch / torchvision come from the lab's system install (2.7.0+cu128) via --system-site-packages
+timm>=1.0.9
+transformers>=4.44,<5
+huggingface_hub>=0.23.2,<1.0
+pandas
+scikit-learn
+opencv-python-headless
+matplotlib
+tqdm
+tabulate
+grad-cam>=1.5
+gdown
+onnx
+onnxruntime

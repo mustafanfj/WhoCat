@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhoCat · Front door</title>
+<meta name="description" content="Interactive demo of WhoCat: a cat-flap face check that keeps look-alike neighbour cats out.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 29V12l4-7 3 5h6l3-5 4 7v17z' fill='%231b6c80'/%3E%3Crect x='11' y='17' width='10' height='12' rx='2' fill='%23fff'/%3E%3C/svg%3E">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" aria-label="WhoCat">
+    <a class="brand" href="#door" aria-label="WhoCat home">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 29V12l4-7 3 5h6l3-5 4 7v17z" fill="currentColor"/><rect x="11" y="17" width="10" height="12" rx="2" fill="#fff"/><circle cx="12.5" cy="13.5" r="1.3" fill="#fff"/><circle cx="19.5" cy="13.5" r="1.3" fill="#fff"/></svg>
+      <span>WhoCat</span>
+    </a>
+    <label class="scope">
+      <span class="scope-label">Home</span>
+      <select id="home-select" aria-label="Choose a home"></select>
+    </label>
+    <nav class="nav">
+      <a href="#door" data-route="door" class="nav-item">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 17V8l3-4 2 3h2l2-3 3 4v9z"/><path d="M8 17v-5h4v5"/></svg>Front door</a>
+      <a href="#how" data-route="how" class="nav-item">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 9v5M10 6.5v.01"/></svg>How it works</a>
+      <a href="#results" data-route="results" class="nav-item">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16V9M10 16V4M16 16v-5"/></svg>Results</a>
+    </nav>
+    <div class="sidebar-foot">
+      <a class="foot-link" href="https://github.com/mustafanfj/WhoCat" target="_blank" rel="noopener">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"/></svg>Code on GitHub</a>
+      <a class="foot-link" href="https://github.com/mustafanfj/WhoCat/tree/main/paper" target="_blank" rel="noopener">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5z"/><path d="M8 10h5M8 13h5"/></svg>Paper</a>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <button class="menu-btn" id="menu-btn" aria-label="Open menu"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg></button>
+    <span class="topbar-title" id="topbar-title">Front door</span>
+    <span class="mode-chip" id="mode-chip" hidden></span>
+  </header>
+
+  <main class="sheet" id="sheet">
+    <!-- FRONT DOOR -->
+    <section class="screen" data-screen="door" aria-labelledby="door-title">
+      <div class="title-row">
+        <div>
+          <p class="crumb"><span id="crumb-home">Home</span> / Front door</p>
+          <h1 id="door-title">Front door</h1>
+          <p class="meta" id="door-meta">Loading the sample homes…</p>
+        </div>
+        <div class="controls">
+          <div class="seg" role="radiogroup" aria-label="Face model" id="model-seg">
+            <button role="radio" data-value="ours" aria-checked="true">WhoCat</button>
+            <button role="radio" data-value="petface" aria-checked="false">PetFace</button>
+          </div>
+          <div class="seg" role="radiogroup" aria-label="Door rule" id="rule-seg">
+            <button role="radio" data-value="full" aria-checked="true">Full door rule</button>
+            <button role="radio" data-value="naive" aria-checked="false">Threshold only</button>
+          </div>
+          <button class="btn primary" id="run-all">Run every visit</button>
+        </div>
+      </div>
+
+      <div class="grid-main">
+        <section class="card household" aria-labelledby="hh-title">
+          <h2 id="hh-title">Household</h2>
+          <div class="hh-block">
+            <div class="hh-head"><h3>Owner</h3><span class="hint" id="enrol-count"></span></div>
+            <p class="hint">Enrolment photos. Tap one to leave it out.</p>
+            <div class="enrol" id="enrol"></div>
+          </div>
+          <div class="hh-block">
+            <div class="hh-head">
+              <h3>Neighbour memory</h3>
+              <label class="switch"><input type="checkbox" id="mem-switch" checked><span class="track"></span><span class="sr">Use neighbour memory</span></label>
+            </div>
+            <p class="hint">One photo of each neighbour the door has kept out before.</p>
+            <ul class="memory" id="memory"></ul>
+          </div>
+          <div class="hh-block">
+            <h3>Door settings</h3>
+            <dl class="settings" id="settings"></dl>
+          </div>
+        </section>
+
+        <section class="card visitor" aria-labelledby="vis-title">
+          <div class="card-head">
+            <h2 id="vis-title">At the door</h2>
+            <div class="seg small" role="radiogroup" aria-label="Camera" id="cam-seg">
+              <button role="radio" data-value="clean" aria-checked="true">Clear photo</button>
+              <button role="radio" data-value="door" aria-checked="false">Door camera</button>
+            </div>
+          </div>
+
+          <div class="visit">
+            <figure class="visit-photo">
+              <img id="visit-img" alt="">
+              <figcaption id="visit-cap"></figcaption>
+            </figure>
+
+            <div class="trace" aria-live="polite">
+              <div class="check" id="check1">
+                <div class="check-head"><span class="check-name">Looks like the owner</span><span class="pill" id="c1-pill"></span></div>
+                <div class="scale" aria-hidden="true">
+                  <div class="scale-track"><div class="scale-fill" id="c1-fill"></div><div class="tick" id="c1-tick"></div><div class="dot" id="c1-dot"></div></div>
+                  <div class="scale-axis"><span>0</span><span>0.5</span><span>1</span></div>
+                </div>
+                <p class="check-text" id="c1-text"></p>
+              </div>
+              <div class="check" id="check2">
+                <div class="check-head"><span class="check-name">Closer to the owner than to every remembered neighbour</span><span class="pill" id="c2-pill"></span></div>
+                <div class="scale" aria-hidden="true">
+                  <div class="scale-track centred"><div class="scale-fill" id="c2-fill"></div><div class="tick" id="c2-tick"></div><div class="dot" id="c2-dot"></div></div>
+                  <div class="scale-axis"><span>more like a neighbour</span><span>more like the owner</span></div>
+                </div>
+                <p class="check-text" id="c2-text"></p>
+              </div>
+              <div class="verdict" id="verdict">
+                <svg class="verdict-icon" viewBox="0 0 24 24" aria-hidden="true"><path id="verdict-path" d=""/></svg>
+                <div>
+                  <p class="verdict-title" id="verdict-title"></p>
+                  <p class="verdict-truth" id="verdict-truth"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pick">
+            <div class="pick-head">
+              <h3>Who comes to the door</h3>
+              <label class="btn ghost upload" id="upload-btn" hidden>
+                <input type="file" accept="image/*" id="upload" hidden>
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 14V4M6 8l4-4 4 4M4 16h12"/></svg>Your own photo
+              </label>
+            </div>
+            <div class="pick-rows" id="pick"></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card log" aria-labelledby="log-title">
+        <div class="card-head">
+          <h2 id="log-title">Visit log</h2>
+          <p class="log-summary" id="log-summary">Run every visit to see how this home's door does.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Visitor</th><th scope="col">Who it was</th><th scope="col" class="num">Owner score</th><th scope="col" class="num">Closest neighbour</th><th scope="col">Door</th><th scope="col">Outcome</th></tr></thead>
+            <tbody id="log-body"><tr class="empty"><td colspan="6">No visits yet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="screen" data-screen="how" aria-labelledby="how-title" hidden>
+      <div class="title-row"><div><p class="crumb">WhoCat / How it works</p><h1 id="how-title">How the door decides</h1>
+        <p class="meta">A face model trained to separate cats of the same coat, and a door rule that remembers its neighbours.</p></div></div>
+      <figure class="card method"><img src="method.png" alt="Training: coat-aware batches, door and night augmentation, a fine-tuned DINOv2-B encoder, ArcFace and triplet losses. At the door: owner template, visitor embedding, two checks, open or keep out."></figure>
+      <div class="how-cols">
+        <section class="card"><h2>The face model</h2>
+          <p>DINOv2-B, fine-tuned on 113,592 PetFace cats with ArcFace and a batch-hard triplet loss. Every training batch is filled with groups of cats that share a coat, so the model has to learn the face and not the fur colour. Half of the photos are degraded to look like a door camera or a night shot; without that, same-coat batches teach the model to tell photos apart by their lighting.</p></section>
+        <section class="card"><h2>The door rule</h2>
+          <p>The owner's enrolment photos are averaged into one template. A visitor gets in only if it matches the owner above a threshold tuned on look-alike cats, and matches the owner better than every neighbour the door has kept out before. The threshold and margin come from validation homes; the sample homes here were never used to tune them.</p></section>
+        <section class="card"><h2>What “Threshold only” shows</h2>
+          <p>This is what a product team would usually ship: one threshold set so that 1% of random strangers get in. On look-alike neighbours that lets in about one visit in five, for every model we tested. Switch between the two rules on the Front door to see it happen.</p></section>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section class="screen" data-screen="results" aria-labelledby="res-title" hidden>
+      <div class="title-row"><div><p class="crumb">WhoCat / Results</p><h1 id="res-title">Results on unseen cats</h1>
+        <p class="meta">34,083 PetFace test cats. TAR@FAR=1%: share of owner photos accepted when 1% of strangers get in.</p></div></div>
+      <section class="card">
+        <h2>Verification, by kind of stranger</h2>
+        <div class="table-wrap"><table class="res">
+          <thead><tr><th scope="col">Model</th><th class="num" scope="col">AUC, official pairs</th><th class="num" scope="col">Random</th><th class="num" scope="col">Same coat</th><th class="num" scope="col">Look-alike</th><th class="num" scope="col">Look-alike, door</th><th class="num" scope="col">Look-alike, night</th></tr></thead>
+          <tbody>
+            <tr><td>MegaDescriptor-L</td><td class="num">88.23</td><td class="num">45.4</td><td class="num">32.5</td><td class="num">18.1</td><td class="num">4.9</td><td class="num">3.6</td></tr>
+            <tr><td>DINOv2-B, frozen</td><td class="num">95.58</td><td class="num">64.6</td><td class="num">46.5</td><td class="num">26.6</td><td class="num">10.6</td><td class="num">14.3</td></tr>
+            <tr><td>PetFace ResNet-50</td><td class="num">97.71</td><td class="num">86.7</td><td class="num">79.0</td><td class="num">59.1</td><td class="num">31.9</td><td class="num">31.3</td></tr>
+            <tr class="ours"><td>WhoCat (ours)</td><td class="num">98.44</td><td class="num">91.8</td><td class="num">88.4</td><td class="num">74.1</td><td class="num">65.1</td><td class="num">70.3</td></tr>
+            <tr><td>WhoCat small (MobileNetV3)</td><td class="num">97.95</td><td class="num">87.1</td><td class="num">79.9</td><td class="num">57.6</td><td class="num">42.9</td><td class="num">51.0</td></tr>
+          </tbody></table></div>
+      </section>
+      <section class="card">
+        <h2>The whole door, one decision at a time</h2>
+        <p class="hint">3,593 validation homes, each visited by its owner and three look-alike neighbours.</p>
+        <div class="table-wrap"><table class="res">
+          <thead><tr><th scope="col">Door</th><th class="num" scope="col">Owner visits let in</th><th class="num" scope="col">Look-alike visits let in</th><th class="num" scope="col">Owner, door camera</th></tr></thead>
+          <tbody>
+            <tr><td>PetFace model, threshold on random cats</td><td class="num">85.6%</td><td class="num">20.3%</td><td class="num">60.4%</td></tr>
+            <tr><td>Our model, threshold on random cats</td><td class="num">92.0%</td><td class="num">20.1%</td><td class="num">86.2%</td></tr>
+            <tr><td>+ threshold tuned on look-alikes</td><td class="num">73.5%</td><td class="num">1.04%</td><td class="num">58.8%</td></tr>
+            <tr><td>+ neighbour memory</td><td class="num">72.3%</td><td class="num">0.27%</td><td class="num">58.0%</td></tr>
+            <tr class="ours"><td>+ 3 enrolment photos (full door rule)</td><td class="num">82.3%</td><td class="num">0.39%</td><td class="num">64.9%</td></tr>
+            <tr><td>PetFace model with the full door rule</td><td class="num">67.7%</td><td class="num">0.46%</td><td class="num">23.4%</td></tr>
+          </tbody></table></div>
+      </section>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<noscript><p class="noscript">This demo needs JavaScript. The results are also in the paper on GitHub: github.com/mustafanfj/WhoCat.</p></noscript>
+<script src="app.js"></script>
+</body>
+</html>

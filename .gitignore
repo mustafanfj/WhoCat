@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.venv/
+.cache/
+env.sh
+# data, weights and generated outputs stay on the training machine
+data/
+checkpoints/
+outputs/
+logs/
+*.pt
+*.pth
+*.onnx
+*.npy
+*.npz
+# the demo bundle holds PetFace crops (research-only licence): export it locally, do not commit it
+demo/web/bundle/
+.taste-skill/
