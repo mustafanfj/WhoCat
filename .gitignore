@@ -16,3 +16,4 @@ logs/
 # the demo bundle holds PetFace crops (research-only licence): export it locally, do not commit it
 demo/web/bundle/
 .taste-skill/
+demo/WhoCat_demo.html

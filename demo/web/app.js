@@ -146,7 +146,9 @@
   const imgUrl = (src, cam = "clean") => {
     const up = S.uploads.find(u => u.src === src);
     if (up) return cam === "door" ? up.doorUrl : up.dataUrl;
-    return "bundle/" + (cam === "door" && S.bundle.hasDoorImages ? src.replace(/^img\//, "img_door/") : src);
+    const path = cam === "door" && S.bundle.hasDoorImages ? src.replace(/^img\//, "img_door/") : src;
+    const im = window.WHOCAT_IMAGES;
+    return im ? im[path] || im[src] : "bundle/" + path;
   };
   const doorName = d => DOOR_NAME[`${d.model}|${d.rule}`];
 
@@ -213,7 +215,8 @@
         img.src = url; img.dataset.src = url;
       }
       img.alt = `Visitor at the door: ${truthOf(v).label}`;
-      $("#visit-cap").textContent = S.cam === "door" ? "as the door camera sees it" : "clear photo";
+      $("#visit-cap").textContent = S.cam !== "door" ? "clear photo"
+        : S.uploads.some(u => u.src === v) || S.bundle.door_images === "exact" ? "as the door camera sees it" : "door camera, simulated";
     }
 
     const d = v && decide(v, S.doors[1]);
@@ -526,16 +529,19 @@
     });
     document.addEventListener("keydown", ev => { if (ev.key === "Escape") $(".sidebar").classList.remove("open"); });
     try {
-      const res = await fetch("bundle/bundle.json");
-      if (!res.ok) throw new Error();
-      S.bundle = await res.json();
+      if (window.WHOCAT_BUNDLE) S.bundle = window.WHOCAT_BUNDLE;   // single-file build (demo/build_single.py)
+      else {
+        const res = await fetch("bundle/bundle.json");
+        if (!res.ok) throw new Error();
+        S.bundle = await res.json();
+      }
     } catch {
       $("#doors").innerHTML = '<p class="hint">No sample homes found. Put the exported bundle in demo/web/bundle (demo/export_bundle.py writes it), then reload.</p>';
       $$("#mode-seg button, #cam-seg button").forEach(b => (b.disabled = true));
       return;
     }
     S.bundle.hasDoorImages = S.bundle.door_images !== false;
-    try { const h = await fetch("api/health", { cache: "no-store" }); S.live = h.ok && (await h.json()).ok === true; } catch { S.live = false; }
+    if (location.protocol !== "file:") try { const h = await fetch("api/health", { cache: "no-store" }); S.live = h.ok && (await h.json()).ok === true; } catch { S.live = false; }
     const chip = $("#mode-chip"); chip.hidden = false;
     chip.textContent = S.live ? "Live: the models are running on this computer" : `${S.bundle.homes.length} sample homes, scored by the trained models`;
     chip.classList.toggle("live", S.live);
@@ -547,6 +553,7 @@
     S.bundle.homes.forEach((h, i) => sel.add(new Option(h.name, i)));
     sel.addEventListener("change", () => loadHome(+sel.value));
     if (/[?&]mode=mine/.test(location.search)) S.mode = "mine";
+    if (location.protocol === "file:") { S.mode = "sample"; $("#mode-seg").hidden = true; }   // opened as a file: no models, so no camera
     wireSeg($("#mode-seg"), S.mode, v => { S.mode = v; renderAll(); });
     wireSeg($("#cam-seg"), S.cam, v => { S.cam = v; renderStage(); renderVisits(); });
     $("#mem-switch").addEventListener("change", ev => { S.memOn = ev.target.checked; renderAll(); });

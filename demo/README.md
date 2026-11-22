@@ -30,6 +30,10 @@ Open **http://localhost:8123**. The browser allows the camera only on `localhost
 
 On Windows PowerShell, if the weights sit somewhere else, point the server at the project folder first: `$env:WHOCAT_ROOT = "C:\path\to\project"`.
 
+## One-file version (sample homes only)
+
+`python demo/build_single.py` packs the page, the bundle and all images into `demo/WhoCat_demo.html`, which opens by double-click. It has no camera mode, since the models are not inside it.
+
 ## Static mode (sample homes only)
 
 ```bash
