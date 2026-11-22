@@ -389,3 +389,42 @@ tr.ours td { font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0ms !important; animation: none !important; }
 }
+
+/* ---------- guided tour ---------- */
+.tour { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 40px; align-items: end; padding: 24px 28px; border-radius: var(--radius-card); background: #14363f; color: #fff; }
+.tour-text { display: grid; gap: 8px; max-width: 78ch; }
+.tour-count { font-size: 13px; color: #a9c9d1; }
+.tour h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; }
+.tour p#tour-body { color: #e3eef1; line-height: 1.6; }
+.tour-nav { display: grid; gap: 14px; justify-items: end; }
+.tour-dots { display: flex; gap: 6px; }
+.tour-dots button { width: 28px; height: 6px; padding: 0; border: 0; border-radius: 3px; background: rgba(255, 255, 255, 0.25); cursor: pointer; transition: background-color 150ms ease; }
+.tour-dots button[aria-selected="true"] { background: #fff; }
+@media (hover: hover) and (pointer: fine) { .tour-dots button:not([aria-selected="true"]):hover { background: rgba(255, 255, 255, 0.5); } }
+.btn.on-dark { background: transparent; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
+.btn.on-dark.primary { background: #fff; border-color: #fff; color: var(--text); }
+@media (hover: hover) and (pointer: fine) { .btn.on-dark:hover { background: rgba(255, 255, 255, 0.1); } .btn.on-dark.primary:hover { background: #e7f0f2; } }
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+.ready .tour #tour-title, .ready .tour #tour-body { animation: rise 280ms var(--ease-out) both; }
+
+/* ---------- scoreboard ---------- */
+.board { display: grid; gap: 14px; }
+.score th span { display: block; font-size: 11px; color: var(--muted); }
+.score th { vertical-align: bottom; }
+.score td { padding: 11px 12px 11px 0; }
+.score td.num { font-size: 16px; font-weight: 500; }
+.score td.best { color: var(--positive); font-weight: 600; }
+.score td.bad { color: var(--negative); }
+.score tr[aria-current="true"] td { background: var(--raised); }
+.score tr[aria-current="true"] td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 12px; } /* taste-skill-ignore: row marker */
+.score tr td:first-child { padding-left: 12px; }
+.score th:first-child { padding-left: 12px; }
+.score tr.ours td { font-weight: 600; }
+.board-take { color: var(--text); }
+.board-take b { font-weight: 600; color: var(--accent); }
+@media (max-width: 760px) {
+  .tour { grid-template-columns: 1fr; padding: 20px; }
+  .tour-nav { justify-items: stretch; }
+  .tour-nav .row-btns .btn { flex: 1; justify-content: center; }
+  .tour h2 { font-size: 19px; }
+}

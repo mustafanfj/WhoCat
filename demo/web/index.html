@@ -50,13 +50,29 @@
         <div>
           <p class="crumb" id="crumb">Front door</p>
           <h1 id="door-title">Who's at the door?</h1>
-          <p class="meta">One visitor, two cat flaps. The <b>normal door</b> uses PetFace's face model with one threshold. The <b>WhoCat door</b> uses our model, a threshold tuned on look-alike cats, and a memory of the neighbours it has kept out.</p>
+          <p class="meta">A cat flap has to let its own cat in and keep the neighbours' look-alike cats out. Here the same visitor meets two doors at once, so you can see which one gets it right.</p>
         </div>
         <div class="seg" role="radiogroup" aria-label="Whose cats" id="mode-seg">
           <button role="radio" data-value="sample" aria-checked="true">Sample homes</button>
           <button role="radio" data-value="mine" aria-checked="false" tabindex="-1">Your own cat</button>
         </div>
       </div>
+
+      <!-- guided tour: the story in four scenes -->
+      <section class="tour" id="tour" aria-labelledby="tour-title">
+        <div class="tour-text">
+          <p class="tour-count" id="tour-count"></p>
+          <h2 id="tour-title"></h2>
+          <p id="tour-body"></p>
+        </div>
+        <div class="tour-nav">
+          <div class="tour-dots" id="tour-dots" role="tablist" aria-label="Demo scenes"></div>
+          <div class="row-btns">
+            <button class="btn on-dark" type="button" id="tour-prev">Back</button>
+            <button class="btn on-dark primary" type="button" id="tour-next">Next</button>
+          </div>
+        </div>
+      </section>
 
       <!-- your own cat: enrolment (live server only) -->
       <section class="card mine" id="mine" aria-labelledby="mine-title" hidden>
@@ -103,6 +119,24 @@
         </div>
         <div class="doors" id="doors" aria-live="polite"></div>
         <div class="truth" id="truth"></div>
+      </section>
+
+      <section class="card board" aria-labelledby="board-title">
+        <div class="card-head">
+          <div>
+            <h2 id="board-title">Scoreboard</h2>
+            <p class="hint" id="board-sub"></p>
+          </div>
+          <div class="seg small" role="radiogroup" aria-label="Which homes" id="board-seg">
+            <button role="radio" data-value="here" aria-checked="true">These 12 homes</button>
+            <button role="radio" data-value="paper" aria-checked="false" tabindex="-1">3,593 validation homes</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table class="score">
+          <thead><tr><th scope="col">Face model</th><th scope="col">Door rule</th><th scope="col" class="num">Owner let in<span>clear photo, higher is better</span></th><th scope="col" class="num">Owner let in<span>door camera, higher is better</span></th><th scope="col" class="num">Look-alikes let in<span>lower is better</span></th></tr></thead>
+          <tbody id="board-body"></tbody>
+        </table></div>
+        <p class="board-take" id="board-take"></p>
       </section>
 
       <section class="card visits" aria-labelledby="visits-title">

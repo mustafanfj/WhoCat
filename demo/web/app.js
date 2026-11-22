@@ -7,11 +7,12 @@
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const LETTERS = "ABCDEFGHIJKLMNOP";
   const RULE_NAME = { full: "Full door rule", naive: "Threshold only" };
-  const DOOR_NAME = {
-    "petface|naive": ["Normal door", "PetFace model, one threshold"],
-    "ours|full": ["WhoCat door", "Our model, look-alike threshold and neighbour memory"],
-    "ours|naive": ["Our model, plain threshold", "Our model, one threshold"],
-    "petface|full": ["PetFace with our rule", "PetFace model, look-alike threshold and neighbour memory"],
+  const MODEL_TITLE = { ours: "WhoCat model (ours)", petface: "PetFace model" };
+  const RULE_SUB = { naive: "Plain threshold, as cat flaps ship", full: "WhoCat door rule: look-alike threshold and neighbour memory" };
+  const doorName = d => [MODEL_TITLE[d.model], RULE_SUB[d.rule]];
+  const PAPER = {   // 3,593 validation homes, from the paper (owner clear %, owner door camera %, look-alikes %)
+    "petface|naive": [85.6, 60.4, 20.3], "ours|naive": [92.0, 86.2, 20.1],
+    "petface|full": [67.7, 23.4, 0.46], "ours|full": [82.3, 64.9, 0.39],
   };
   const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -19,6 +20,7 @@
     bundle: null, live: false, mode: "sample", cam: "clean", memOn: true,
     doors: [{ model: "petface", rule: "naive" }, { model: "ours", rule: "full" }],
     uploads: [],
+    tour: 0, board: "here",
     sample: { home: 0, enrol: [], memory: [], groups: [], visitor: null },
     mine: { enrol: [], memory: [], tests: [], strangers: [], visitor: null },
   };
@@ -142,6 +144,136 @@
     return best;
   }
 
+  // ---------- every home at once (the scoreboard and the tour) ----------
+  /* Each home with all its enrolment photos and every neighbour remembered, as in the paper. */
+  function decideIn(h, src, door, cam) {
+    const c = { enrol: h.enrol.map(src => ({ src, on: true })), memory: h.neighbours.map((n, j) => ({ label: `Neighbour ${LETTERS[j]}`, stored: n.stored, on: true })) };
+    const mem = S.memOn; S.memOn = true;
+    const d = decide(src, door, cam, c);
+    S.memOn = mem;
+    return d.open;
+  }
+  const scoreCache = new Map();
+  function scoreAll(door) {
+    const key = door.model + door.rule;
+    if (scoreCache.has(key)) return scoreCache.get(key);
+    const r = { own: 0, ownDoor: 0, look: 0, nOwn: 0, nLook: 0 };
+    S.bundle.homes.forEach(h => {
+      h.owner_visits.forEach(v => { r.nOwn++; r.own += decideIn(h, v, door, "clean"); r.ownDoor += decideIn(h, v, door, "door"); });
+      h.neighbours.forEach(n => n.visits.forEach(v => { r.nLook++; r.look += decideIn(h, v, door, "clean"); }));
+    });
+    scoreCache.set(key, r);
+    return r;
+  }
+  function findVisit(kind, test) {
+    for (let i = 0; i < S.bundle.homes.length; i++) {
+      const h = S.bundle.homes[i];
+      const vis = kind === "owner" ? h.owner_visits : h.neighbours.flatMap(n => n.visits);
+      const hit = vis.find(v => test(h, v));
+      if (hit) return { home: i, visitor: hit };
+    }
+    return null;
+  }
+  const PF = m => ({ model: m, rule: "naive" }), FULL = m => ({ model: m, rule: "full" });
+  function buildScenes() {
+    const pn = scoreAll(PF("petface")), on = scoreAll(PF("ours")), pf = scoreAll(FULL("petface")), of = scoreAll(FULL("ours"));
+    const homes = S.bundle.homes.length;
+    const look = findVisit("look", (h, v) => decideIn(h, v, PF("petface"), "clean") && decideIn(h, v, PF("ours"), "clean") && !decideIn(h, v, FULL("ours"), "clean"))
+      || findVisit("look", () => true);
+    const ownClean = findVisit("owner", (h, v) => !decideIn(h, v, FULL("petface"), "clean") && decideIn(h, v, FULL("ours"), "clean"));
+    const ownDoor = findVisit("owner", (h, v) => !decideIn(h, v, FULL("petface"), "door") && decideIn(h, v, FULL("ours"), "door"))
+      || findVisit("owner", (h, v) => decideIn(h, v, FULL("ours"), "door"));
+    const P = S.paper = PAPER;
+    return [
+      { title: "A plain threshold lets look-alikes in",
+        body: `A normal cat flap opens when the visitor looks enough like the owner. This visitor is a neighbour's look-alike cat, and both face models let it in. Across these ${homes} homes that happens on ${pn.look} of ${pn.nLook} look-alike visits with PetFace's model and ${on.look} with ours, so a better model alone is not enough.`,
+        doors: [PF("petface"), PF("ours")], cam: "clean", at: look },
+      { title: "Our door rule keeps the look-alike out",
+        body: `Same model, two rules. The WhoCat door uses a threshold tuned on look-alike cats, and remembers the neighbours it has turned away: a visitor must look more like the owner than like any of them. The look-alike fails both checks. Look-alikes let in across these homes: ${of.look} of ${of.nLook}.`,
+        doors: [PF("ours"), FULL("ours")], cam: "clean", at: look },
+      { title: "With the same strict rule, our model still lets the owner in",
+        body: `Now both doors use the WhoCat rule, so only the face model differs. A strict rule only helps if the owner still gets in. This is the owner coming home: PetFace's model locks it out, ours opens. Owner let in: ${of.own} of ${of.nOwn} with ours against ${pf.own} with PetFace's, and ${P["ours|full"][0]}% against ${P["petface|full"][0]}% on 3,593 validation homes.`,
+        doors: [FULL("petface"), FULL("ours")], cam: "clean", at: ownClean },
+      { title: "At the door camera the gap grows",
+        body: `A door camera is blurry, dim and close. Our model was trained with photos degraded like this; PetFace's was not. Owner let in from the door camera: ${of.ownDoor} of ${of.nOwn} with ours, ${pf.ownDoor} with PetFace's, and ${P["ours|full"][1]}% against ${P["petface|full"][1]}% on 3,593 validation homes.`,
+        doors: [FULL("petface"), FULL("ours")], cam: "door", at: ownDoor },
+      { title: "Try it with your own cat",
+        body: S.live
+          ? "Take one to three photos of your cat with the webcam, then photograph visitors: your cat on another day, another cat, or a cat from the sample homes. Both doors score every photo with the real models."
+          : "This needs the live server with the models (demo/README.md). Until then, pick any visitor below and compare the doors yourself.",
+        doors: [FULL("petface"), FULL("ours")], cam: "clean", mine: S.live },
+    ];
+  }
+  let SCENES = [];
+  function applyScene(i) {
+    S.tour = i;
+    const sc = SCENES[i];
+    S.doors = sc.doors.map(d => ({ ...d }));
+    S.cam = sc.cam;
+    setSegValue("#cam-seg", S.cam);
+    S.mode = sc.mine ? "mine" : "sample";
+    setSegValue("#mode-seg", S.mode);
+    if (sc.at) {
+      setHome(sc.at.home);
+      S.sample.visitor = sc.at.visitor;
+      $("#home-select").value = String(sc.at.home);
+    }
+    renderAll();
+  }
+  function renderTour() {
+    const sc = SCENES[S.tour];
+    $("#tour").hidden = false;
+    $("#tour-count").textContent = `Scene ${S.tour + 1} of ${SCENES.length}`;
+    $("#tour-title").textContent = sc.title;
+    $("#tour-body").textContent = sc.body;
+    $("#tour-prev").disabled = S.tour === 0;
+    $("#tour-next").textContent = S.tour === SCENES.length - 1 ? "Start again" : "Next";
+    const dots = $("#tour-dots"); dots.replaceChildren();
+    SCENES.forEach((x, i) => {
+      const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", String(i === S.tour)); b.setAttribute("aria-label", x.title);
+      b.addEventListener("click", () => applyScene(i));
+      dots.append(b);
+    });
+  }
+
+  function renderBoard() {
+    const rows = [PF("petface"), PF("ours"), FULL("petface"), FULL("ours")];
+    const here = S.board === "here";
+    const body = $("#board-body"); body.replaceChildren();
+    const cur = S.doors.map(d => d.model + d.rule);
+    const best = col => {
+      const vals = rows.map(r => val(r, col));
+      return col === 2 ? Math.min(...vals) : Math.max(...vals);
+    };
+    function val(r, col) {
+      if (!here) return PAPER[`${r.model}|${r.rule}`][col];
+      const x = scoreAll(r);
+      return [x.own / x.nOwn, x.ownDoor / x.nOwn, x.look / x.nLook][col] * 100;
+    }
+    function cell(r, col) {
+      if (!here) return `${PAPER[`${r.model}|${r.rule}`][col]}%`;
+      const x = scoreAll(r);
+      return [`${x.own}/${x.nOwn}`, `${x.ownDoor}/${x.nOwn}`, `${x.look}/${x.nLook}`][col];
+    }
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      if (cur.includes(r.model + r.rule)) tr.setAttribute("aria-current", "true");
+      if (r.model === "ours" && r.rule === "full") tr.className = "ours";
+      const bad = col => (col === 2 ? val(r, 2) > 5 : false);
+      tr.innerHTML = `<td>${MODEL_TITLE[r.model]}</td><td>${r.rule === "full" ? "WhoCat door rule" : "Plain threshold"}</td>` +
+        [0, 1, 2].map(col => `<td class="num ${val(r, col) === best(col) ? "best" : ""} ${bad(col) ? "bad" : ""}">${cell(r, col)}</td>`).join("");
+      body.append(tr);
+    });
+    const pf = scoreAll(FULL("petface")), of = scoreAll(FULL("ours"));
+    $("#board-sub").textContent = here
+      ? `Every visit to the ${S.bundle.homes.length} sample homes, counted by the page. Rows in use by the two doors above are marked.`
+      : "From the paper: 3,593 validation homes, each visited by its owner and three look-alike neighbours.";
+    $("#board-take").innerHTML = here
+      ? `A plain threshold lets look-alikes in with either model. With the WhoCat rule both keep them out, and <b>our model lets the owner in ${of.own} of ${of.nOwn} times against ${pf.own}</b>, and ${of.ownDoor} against ${pf.ownDoor} at the door camera.`
+      : `A plain threshold lets in about one look-alike visit in five with either model. With the WhoCat rule both keep them out, and <b>our model lets the owner in 82.3% of the time against 67.7%</b>, and 64.9% against 23.4% at the door camera.`;
+  }
+
   // ---------- rendering ----------
   const imgUrl = (src, cam = "clean") => {
     const up = S.uploads.find(u => u.src === src);
@@ -150,7 +282,6 @@
     const im = window.WHOCAT_IMAGES;
     return im ? im[path] || im[src] : "bundle/" + path;
   };
-  const doorName = d => DOOR_NAME[`${d.model}|${d.rule}`];
 
   function renderMode() {
     const mine = S.mode === "mine";
@@ -381,7 +512,7 @@
   }
 
   function renderStage() { renderFaces(); renderDoors(); }
-  function renderAll() { tplCache.clear(); renderMode(); renderMine(); renderStage(); renderVisits(); renderAdjust(); }
+  function renderAll() { tplCache.clear(); renderMode(); renderMine(); renderStage(); renderVisits(); renderAdjust(); renderBoard(); if (SCENES.length) renderTour(); }
 
   // ---------- helpers ----------
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -393,6 +524,9 @@
     requestAnimationFrame(() => t.removeAttribute("data-hide"));
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { t.setAttribute("data-hide", ""); setTimeout(() => (t.hidden = true), 220); }, 3200);
+  }
+  function setSegValue(sel, v) {
+    $$("button", $(sel)).forEach(x => { const on = x.dataset.value === v; x.setAttribute("aria-checked", String(on)); x.tabIndex = on ? 0 : -1; });
   }
   function wireSeg(seg, value, onPick) {
     const bs = $$("button", seg);
@@ -568,7 +702,17 @@
     $("#cam-use").addEventListener("click", useShot);
     $("#cam-flip").addEventListener("click", () => { cam.facing = cam.facing === "user" ? "environment" : "user"; startStream(); });
 
-    loadHome(storyHome());
+    wireSeg($("#board-seg"), S.board, v => { S.board = v; renderBoard(); });
+    SCENES = buildScenes();
+    $("#tour-prev").addEventListener("click", () => applyScene(Math.max(0, S.tour - 1)));
+    $("#tour-next").addEventListener("click", () => applyScene((S.tour + 1) % SCENES.length));
+    document.addEventListener("keydown", ev => {
+      if ($("#cam").open || ev.target.closest("input, select, textarea, .seg, [role=tablist]")) return;
+      if (ev.key === "ArrowRight") applyScene(Math.min(SCENES.length - 1, S.tour + 1));
+      if (ev.key === "ArrowLeft") applyScene(Math.max(0, S.tour - 1));
+    });
+    if (S.mode === "mine") { setHome(storyHome()); S.sample.visitor = storyVisitor(); renderAll(); }
+    else applyScene(0);
     document.body.classList.add("ready");
   }
   start();
