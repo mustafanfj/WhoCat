@@ -23,7 +23,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "scripts"))
 import _boot  # noqa: E402,F401
 from whocat import paths  # noqa: E402
-from whocat.data import l2n, load_eval_images  # noqa: E402
+from whocat.data import l2n, load_eval_images, stable_seed  # noqa: E402
+from whocat.degrade import degrade  # noqa: E402
 from whocat.embed import cache_file  # noqa: E402
 
 spec = importlib.util.spec_from_file_location("door", HERE.parent / "scripts" / "12_door_system.py")
@@ -76,6 +77,7 @@ def main():
 
     out = Path(args.out)
     (out / "img").mkdir(parents=True, exist_ok=True)
+    (out / "img_door").mkdir(parents=True, exist_ok=True)
     rows = {}
 
     def image(idx):
@@ -83,7 +85,11 @@ def main():
         if idx not in rows:
             r = ev.iloc[idx]
             name = f"{r.id}_{idx}.jpg"
-            Image.open(paths.IMAGES / r.path).convert("RGB").resize((224, 224)).save(out / "img" / name, quality=86)
+            face = Image.open(paths.IMAGES / r.path).convert("RGB").resize((224, 224), Image.BICUBIC)
+            face.save(out / "img" / name, quality=86)
+            # the exact door-camera copy the cached door embedding was computed from (same seed as data.ImageList)
+            door_img = degrade(face, "door", seed=stable_seed(r.path + "door")).convert("RGB")
+            door_img.resize((224, 224), Image.NEAREST).save(out / "img_door" / name, quality=86)
             rows[idx] = {"src": f"img/{name}", "cat": str(r.id),
                          "emb": {k: {v: b64(emb[k][v][idx]) for v in ("clean", "door")} for k in models}}
         return rows[idx]["src"]
@@ -101,7 +107,7 @@ def main():
                             "visits": [image(v) for v in h["str_v"] if str(ev.iloc[int(v)].id) == c]}
                            for c, t in zip(neigh_ids, h["str_t"])],
         })
-    bundle = {"version": 1, "dim": int(next(iter(emb["ours"]["clean"])).shape[0]),
+    bundle = {"version": 1, "door_images": "exact", "dim": int(next(iter(emb["ours"]["clean"])).shape[0]),
               "models": {"ours": {"label": "WhoCat", "detail": "DINOv2-B, fine-tuned", **cfg["ours"]},
                          "petface": {"label": "PetFace", "detail": "ResNet-50, released weights", **cfg["petface"]}},
               "images": {r["src"]: {"cat": r["cat"], "emb": r["emb"]} for r in rows.values()},

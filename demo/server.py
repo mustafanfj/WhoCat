@@ -135,7 +135,8 @@ def make_handler(emb):
                 raw = base64.b64decode(req["image"].split(",", 1)[-1])
                 img = Image.open(io.BytesIO(raw))
                 face, found = emb.face(img)
-                return self._json(200, {"crop": data_url(face), "face_found": found, "emb": emb.embed(face)})
+                door = degrade(face, "door", seed=0).convert("RGB")   # the same copy embed() scores
+                return self._json(200, {"crop": data_url(face), "door_crop": data_url(door), "face_found": found, "emb": emb.embed(face)})
             except Exception as ex:  # noqa: BLE001
                 return self._json(400, {"error": f"Could not read that photo ({type(ex).__name__})."})
 

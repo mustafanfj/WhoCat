@@ -13,7 +13,7 @@
 <body>
 <div class="shell">
   <aside class="sidebar" aria-label="WhoCat">
-    <a class="brand" href="#door" aria-label="WhoCat home">
+    <a class="brand" href="#door" aria-label="WhoCat, front door">
       <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 29V12l4-7 3 5h6l3-5 4 7v17z" fill="currentColor"/><rect x="11" y="17" width="10" height="12" rx="2" fill="#fff"/><circle cx="12.5" cy="13.5" r="1.3" fill="#fff"/><circle cx="19.5" cy="13.5" r="1.3" fill="#fff"/></svg>
       <span>WhoCat</span>
     </a>
@@ -38,7 +38,7 @@
   </aside>
 
   <header class="topbar">
-    <button class="menu-btn" id="menu-btn" aria-label="Open menu"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg></button>
+    <button class="menu-btn" id="menu-btn" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg></button>
     <span class="topbar-title" id="topbar-title">Front door</span>
     <span class="mode-chip" id="mode-chip" hidden></span>
   </header>
@@ -49,83 +49,84 @@
       <div class="title-row">
         <div>
           <p class="crumb"><span id="crumb-home">Home</span> / Front door</p>
-          <h1 id="door-title">Front door</h1>
+          <h1 id="door-title">Who's at the door?</h1>
           <p class="meta" id="door-meta">Loading the sample homes…</p>
         </div>
         <div class="controls">
           <div class="seg" role="radiogroup" aria-label="Face model" id="model-seg">
             <button role="radio" data-value="ours" aria-checked="true">WhoCat</button>
-            <button role="radio" data-value="petface" aria-checked="false">PetFace</button>
+            <button role="radio" data-value="petface" aria-checked="false" tabindex="-1">PetFace</button>
           </div>
           <div class="seg" role="radiogroup" aria-label="Door rule" id="rule-seg">
             <button role="radio" data-value="full" aria-checked="true">Full door rule</button>
-            <button role="radio" data-value="naive" aria-checked="false">Threshold only</button>
+            <button role="radio" data-value="naive" aria-checked="false" tabindex="-1">Threshold only</button>
           </div>
-          <button class="btn primary" id="run-all">Run every visit</button>
         </div>
       </div>
 
       <div class="grid-main">
-        <section class="card household" aria-labelledby="hh-title">
-          <h2 id="hh-title">Household</h2>
-          <div class="hh-block">
-            <div class="hh-head"><h3>Owner</h3><span class="hint" id="enrol-count"></span></div>
-            <p class="hint">Enrolment photos. Tap one to leave it out.</p>
-            <div class="enrol" id="enrol"></div>
-          </div>
-          <div class="hh-block">
-            <div class="hh-head">
-              <h3>Neighbour memory</h3>
-              <label class="switch"><input type="checkbox" id="mem-switch" checked><span class="track"></span><span class="sr">Use neighbour memory</span></label>
-            </div>
-            <p class="hint">One photo of each neighbour the door has kept out before.</p>
-            <ul class="memory" id="memory"></ul>
-          </div>
-          <div class="hh-block">
-            <h3>Door settings</h3>
-            <dl class="settings" id="settings"></dl>
-          </div>
-        </section>
-
-        <section class="card visitor" aria-labelledby="vis-title">
+        <!-- the door: owner · visitor · neighbour, then the two checks and the decision -->
+        <section class="card door" aria-labelledby="vis-title">
           <div class="card-head">
             <h2 id="vis-title">At the door</h2>
             <div class="seg small" role="radiogroup" aria-label="Camera" id="cam-seg">
               <button role="radio" data-value="clean" aria-checked="true">Clear photo</button>
-              <button role="radio" data-value="door" aria-checked="false">Door camera</button>
+              <button role="radio" data-value="door" aria-checked="false" tabindex="-1">Door camera</button>
             </div>
           </div>
 
-          <div class="visit">
-            <figure class="visit-photo">
-              <img id="visit-img" alt="">
-              <figcaption id="visit-cap"></figcaption>
+          <div class="faceoff" id="faceoff">
+            <figure class="side owner">
+              <div class="stack" id="owner-stack"></div>
+              <figcaption><b>Owner</b><span id="owner-cap">template</span></figcaption>
             </figure>
+            <div class="link owner-link">
+              <span class="score" id="s-owner">–</span>
+              <span class="link-line"><span class="link-fill" id="l-owner"></span></span>
+              <span class="link-label">match to owner</span>
+            </div>
+            <figure class="side visitor">
+              <div class="visit-frame" id="visit-frame">
+                <img id="visit-img" alt="">
+                <span class="verdict-chip" id="verdict-chip"></span>
+              </div>
+              <figcaption><b>Visitor</b><span id="visit-cap">clear photo</span></figcaption>
+            </figure>
+            <div class="link neigh-link">
+              <span class="score" id="s-neigh">–</span>
+              <span class="link-line"><span class="link-fill" id="l-neigh"></span></span>
+              <span class="link-label">match to neighbour</span>
+            </div>
+            <figure class="side neighbour">
+              <div class="neigh-frame"><img id="neigh-img" alt=""><span class="empty-face" id="neigh-empty">No neighbour remembered</span></div>
+              <figcaption><b id="neigh-name">Neighbour</b><span>remembered by the door</span></figcaption>
+            </figure>
+          </div>
 
-            <div class="trace" aria-live="polite">
-              <div class="check" id="check1">
-                <div class="check-head"><span class="check-name">Looks like the owner</span><span class="pill" id="c1-pill"></span></div>
-                <div class="scale" aria-hidden="true">
-                  <div class="scale-track"><div class="scale-fill" id="c1-fill"></div><div class="tick" id="c1-tick"></div><div class="dot" id="c1-dot"></div></div>
-                  <div class="scale-axis"><span>0</span><span>0.5</span><span>1</span></div>
-                </div>
+          <div class="checks" aria-live="polite">
+            <div class="check" id="check1">
+              <span class="check-mark" id="c1-mark" aria-hidden="true"></span>
+              <div class="check-body">
+                <div class="check-head"><span class="check-name">Looks like the owner</span><span class="check-val" id="c1-val"></span></div>
+                <div class="scale" aria-hidden="true"><div class="scale-track"><div class="scale-fill" id="c1-fill"></div><div class="tick" id="c1-tick"></div></div></div>
                 <p class="check-text" id="c1-text"></p>
               </div>
-              <div class="check" id="check2">
-                <div class="check-head"><span class="check-name">Closer to the owner than to every remembered neighbour</span><span class="pill" id="c2-pill"></span></div>
-                <div class="scale" aria-hidden="true">
-                  <div class="scale-track centred"><div class="scale-fill" id="c2-fill"></div><div class="tick" id="c2-tick"></div><div class="dot" id="c2-dot"></div></div>
-                  <div class="scale-axis"><span>more like a neighbour</span><span>more like the owner</span></div>
-                </div>
+            </div>
+            <div class="check" id="check2">
+              <span class="check-mark" id="c2-mark" aria-hidden="true"></span>
+              <div class="check-body">
+                <div class="check-head"><span class="check-name">More like the owner than any known neighbour</span><span class="check-val" id="c2-val"></span></div>
+                <div class="scale" aria-hidden="true"><div class="scale-track centred"><div class="scale-mid"></div><div class="scale-fill" id="c2-fill"></div><div class="tick" id="c2-tick"></div></div></div>
                 <p class="check-text" id="c2-text"></p>
               </div>
-              <div class="verdict" id="verdict">
-                <svg class="verdict-icon" viewBox="0 0 24 24" aria-hidden="true"><path id="verdict-path" d=""/></svg>
-                <div>
-                  <p class="verdict-title" id="verdict-title"></p>
-                  <p class="verdict-truth" id="verdict-truth"></p>
-                </div>
-              </div>
+            </div>
+          </div>
+
+          <div class="verdict" id="verdict">
+            <svg class="verdict-icon" viewBox="0 0 24 24" aria-hidden="true"><path id="verdict-path" d=""/></svg>
+            <div>
+              <p class="verdict-title" id="verdict-title"></p>
+              <p class="verdict-truth" id="verdict-truth"></p>
             </div>
           </div>
 
@@ -140,18 +141,46 @@
             <div class="pick-rows" id="pick"></div>
           </div>
         </section>
+
+        <aside class="card household" aria-labelledby="hh-title">
+          <h2 id="hh-title">Household</h2>
+          <div class="hh-block">
+            <div class="hh-head"><h3>Owner's enrolment photos</h3><span class="hint" id="enrol-count"></span></div>
+            <div class="enrol" id="enrol"></div>
+            <p class="hint">Tap a photo to leave it out of the owner's template.</p>
+          </div>
+          <div class="hh-block">
+            <div class="hh-head">
+              <h3>Neighbour memory</h3>
+              <label class="switch"><input type="checkbox" id="mem-switch" checked><span class="track"></span><span class="sr">Use neighbour memory</span></label>
+            </div>
+            <ul class="memory" id="memory"></ul>
+          </div>
+          <div class="hh-block">
+            <h3>Door settings</h3>
+            <dl class="settings" id="settings"></dl>
+          </div>
+        </aside>
       </div>
 
-      <section class="card log" aria-labelledby="log-title">
+      <section class="card tally" aria-labelledby="tally-title">
         <div class="card-head">
-          <h2 id="log-title">Visit log</h2>
-          <p class="log-summary" id="log-summary">Run every visit to see how this home's door does.</p>
+          <div>
+            <h2 id="tally-title">Every visit to this home</h2>
+            <p class="hint" id="tally-sub">The owner's visit and every look-alike neighbour's visits, scored with the settings above.</p>
+          </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th scope="col">Visitor</th><th scope="col">Who it was</th><th scope="col" class="num">Owner score</th><th scope="col" class="num">Closest neighbour</th><th scope="col">Door</th><th scope="col">Outcome</th></tr></thead>
-            <tbody id="log-body"><tr class="empty"><td colspan="6">No visits yet.</td></tr></tbody>
-          </table>
+        <div class="tally-grid">
+          <div>
+            <div class="board" id="board" role="table" aria-label="Doors compared on this home"></div>
+            <p class="legend" aria-hidden="true"><span><i class="pip owner in"></i>owner let in</span><span><i class="pip owner out"></i>owner locked out</span><span><i class="pip look in"></i>look-alike let in</span><span><i class="pip look out"></i>look-alike kept out</span></p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Visitor</th><th scope="col">Who it was</th><th scope="col" class="num">Owner</th><th scope="col" class="num">Neighbour</th><th scope="col">Door</th></tr></thead>
+              <tbody id="log-body"></tbody>
+            </table>
+          </div>
         </div>
       </section>
     </section>
@@ -165,9 +194,9 @@
         <section class="card"><h2>The face model</h2>
           <p>DINOv2-B, fine-tuned on 113,592 PetFace cats with ArcFace and a batch-hard triplet loss. Every training batch is filled with groups of cats that share a coat, so the model has to learn the face and not the fur colour. Half of the photos are degraded to look like a door camera or a night shot; without that, same-coat batches teach the model to tell photos apart by their lighting.</p></section>
         <section class="card"><h2>The door rule</h2>
-          <p>The owner's enrolment photos are averaged into one template. A visitor gets in only if it matches the owner above a threshold tuned on look-alike cats, and matches the owner better than every neighbour the door has kept out before. The threshold and margin come from validation homes; the sample homes here were never used to tune them.</p></section>
+          <p>The owner's enrolment photos are averaged into one template. A visitor gets in only if it matches the owner above a threshold tuned on look-alike cats, and matches the owner better than every neighbour the door has kept out before. The threshold and margin come from other validation homes; the sample homes here were never used to tune them.</p></section>
         <section class="card"><h2>What “Threshold only” shows</h2>
-          <p>This is what a product team would usually ship: one threshold set so that 1% of random strangers get in. On look-alike neighbours that lets in about one visit in five, for every model we tested. Switch between the two rules on the Front door to see it happen.</p></section>
+          <p>This is what a product team would usually ship: one threshold set so that 1% of random strangers get in. On look-alike neighbours that lets in about one visit in five, for every model we tested. Switch between the two rules on the front door to see it happen.</p></section>
       </div>
     </section>
 
