@@ -59,7 +59,7 @@ cd WhoCat
 pip install -r demo/requirements.txt
 ```
 
-**3. Download our trained model** (once; it goes into a `checkpoints` folder inside `WhoCat`):
+**3. Set up our trained model** (once; it is already in the repository as pieces under `weights/`, and this joins them into a `checkpoints` folder inside `WhoCat`):
 
 ```
 python demo/get_weights.py

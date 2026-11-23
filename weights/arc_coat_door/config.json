@@ -1,0 +1,22 @@
+{
+  "name": "arc_coat_door",
+  "sampler": "coat",
+  "backbone": "vit_base_patch14_dinov2.lvd142m",
+  "img_size": 224,
+  "epochs": 10,
+  "P": 64,
+  "K": 2,
+  "groups": 4,
+  "lr_bb": 2e-05,
+  "lr_head": 0.001,
+  "wd": 0.05,
+  "arc_s": 32.0,
+  "arc_m": 0.4,
+  "tri_w": 1.0,
+  "tri_m": 0.3,
+  "door_aug": 0.5,
+  "grad_ckpt": true,
+  "max_cats": 0,
+  "seed": 0,
+  "dim": 512
+}

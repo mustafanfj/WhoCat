@@ -1,6 +1,6 @@
 """Live demo server: the demo page plus an /api/embed endpoint that runs the real models on your photos.
 
-  python demo/get_weights.py     # once: downloads our trained model into ../checkpoints/arc_coat_door
+  python demo/get_weights.py     # once: joins our trained model from weights/ into checkpoints/
   python demo/server.py          # then open http://localhost:8123
 Optional: PetFace's released cat model in ../checkpoints/petface/cat.pt adds the PetFace door, and the
 sample-home bundle in demo/web/bundle adds the guided tour (both need PetFace's research licence). The browser only lets the page

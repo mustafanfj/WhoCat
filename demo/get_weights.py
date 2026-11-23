@@ -1,59 +1,69 @@
-"""Download our trained WhoCat model for the demo (no training needed).
+"""Set up the model weights for the demo (no training, no download needed).
 
   python demo/get_weights.py
 
-Saves best.pt and config.json into <project>/checkpoints/arc_coat_door/, next to this repository
-folder, which is where demo/server.py looks. Uses only the Python standard library.
+GitHub does not accept files over 100 MB, so the weights are stored in this repository as pieces
+under weights/. This script joins them, checks them against their SHA-256, and puts them where
+demo/server.py looks:
+  weights/arc_coat_door/best.pt.part*  ->  checkpoints/arc_coat_door/best.pt   (our WhoCat model)
+  weights/petface/cat.pt.part*         ->  checkpoints/petface/cat.pt          (PetFace's model, if present)
+Uses only the Python standard library.
 """
+import hashlib
+import shutil
 import sys
-import urllib.request
 from pathlib import Path
 
-RELEASE = "https://github.com/mustafanfj/WhoCat/releases/download/v1.0"
-FILES = ["config.json", "best.pt"]
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
 from whocat import paths  # noqa: E402
 
-DEST = paths.CKPT / "arc_coat_door"
+WEIGHTS = REPO / "weights"
+SHA256 = {
+    "arc_coat_door/best.pt": "8fb0189c49b41d300ba78030953fc2756fd9c5d95b6dc4c6f2cca17eb95750d6",
+    "petface/cat.pt": "f167eb84add4f8d4f39115290da02700a501a5f6ba2b64489b5306f6f7ef92a6",
+}
 
 
-def fetch(name):
-    out = DEST / name
-    if out.exists() and out.stat().st_size > 0:
+def sha256(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        while chunk := f.read(1 << 22):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def assemble(rel):
+    out = paths.CKPT / rel
+    parts = sorted((WEIGHTS / rel).parent.glob(Path(rel).name + ".part*"))
+    if out.exists() and sha256(out) == SHA256[rel]:
         print(f"already there: {out}")
-        return
-    tmp = out.with_suffix(out.suffix + ".part")
-    url = f"{RELEASE}/{name}"
-    print(f"downloading {url}")
-    with urllib.request.urlopen(url) as r, open(tmp, "wb") as f:
-        total = int(r.headers.get("Content-Length") or 0)
-        done = 0
-        while chunk := r.read(1 << 20):
-            f.write(chunk)
-            done += len(chunk)
-            if total:
-                print(f"\r  {done / 2**20:.0f} / {total / 2**20:.0f} MB", end="", flush=True)
-    print()
-    tmp.replace(out)
+        return True
+    if not parts:
+        return False
+    out.parent.mkdir(parents=True, exist_ok=True)
+    print(f"joining {len(parts)} pieces -> {out}")
+    with open(out, "wb") as f:
+        for p in parts:
+            with open(p, "rb") as src:
+                shutil.copyfileobj(src, f, 1 << 22)
+    if sha256(out) != SHA256[rel]:
+        out.unlink()
+        sys.exit(f"{rel} is corrupted (checksum mismatch). Download the repository again: "
+                 "git clone, or Code > Download ZIP (a partial download breaks the pieces).")
+    return True
 
 
 def main():
-    DEST.mkdir(parents=True, exist_ok=True)
-    try:
-        for name in FILES:
-            fetch(name)
-    except Exception as ex:  # noqa: BLE001
-        sys.exit(f"Download failed ({ex}).\nGet best.pt and config.json by hand from "
-                 f"https://github.com/mustafanfj/WhoCat/releases and put them in {DEST}")
-    print(f"\nOur model is ready in {DEST}.")
-    pf = paths.PETFACE_WEIGHTS
-    if pf.exists():
-        print(f"PetFace's model found at {pf}: the demo will compare both doors.")
+    if not assemble("arc_coat_door/best.pt"):
+        sys.exit("weights/arc_coat_door is missing. Download the full repository again.")
+    shutil.copy(WEIGHTS / "arc_coat_door" / "config.json", paths.CKPT / "arc_coat_door" / "config.json")
+    print(f"Our WhoCat model is ready in {paths.CKPT / 'arc_coat_door'}")
+    if assemble("petface/cat.pt"):
+        print(f"PetFace's model is ready in {paths.CKPT / 'petface'}: the demo compares both doors.")
     else:
-        print("Optional: to also show the PetFace door, download PetFace's released cat model\n"
-              "(https://github.com/mapooon/PetFace, research use) and save it as\n"
-              f"  {pf}")
+        print("PetFace's model is not in this copy (optional). The demo compares a plain threshold with\n"
+              f"our door rule. To add PetFace's door, save PetFace's released cat model as {paths.PETFACE_WEIGHTS}")
     print("\nNext:  python demo/server.py   then open http://localhost:8123")
 
 

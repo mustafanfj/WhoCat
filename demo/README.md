@@ -10,13 +10,13 @@ A front-door simulator. One visitor, two cat doors side by side, each showing it
 git clone https://github.com/mustafanfj/WhoCat.git
 cd WhoCat
 pip install -r demo/requirements.txt
-python demo/get_weights.py        # downloads our model (once)
+python demo/get_weights.py        # joins our model from weights/ (once, no download)
 python demo/server.py             # then open http://localhost:8123
 ```
 
 Open the page as `http://localhost:8123`: browsers allow the camera only on `localhost` or `https`. The models run on the CPU if there is no GPU; a photo takes about one to three seconds. No internet is needed after the download.
 
-`get_weights.py` puts `best.pt` and `config.json` in `checkpoints/arc_coat_door/` inside the repository. If the download is blocked, get both files from https://github.com/mustafanfj/WhoCat/releases and put them there by hand.
+GitHub does not take files over 100 MB, so the weights are stored as pieces in `weights/`. `get_weights.py` joins them, checks their SHA-256, and puts `best.pt` and `config.json` in `checkpoints/arc_coat_door/`. Use `git clone` or **Code → Download ZIP**; both include the pieces.
 
 ## What it can show
 
