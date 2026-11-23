@@ -14,6 +14,6 @@ logs/
 *.npy
 *.npz
 # the demo bundle holds PetFace crops (research-only licence): export it locally, do not commit it
-demo/web/bundle/
+# demo/web/bundle/ is committed only while this repository is private (PetFace research licence)
 .taste-skill/
 demo/WhoCat_demo.html
