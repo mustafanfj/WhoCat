@@ -73,13 +73,11 @@ python demo/server.py
 
 Wait for `WhoCat demo on http://localhost:8123`, then open **http://localhost:8123** in Chrome or Edge. Use exactly that address: browsers only allow the camera on `localhost`. Stop the demo with Ctrl+C.
 
-**5. Use it:** click **Take a photo** (or **Upload**) and enrol your cat with one to three face photos, eyes towards the camera. Then press **Photo a visitor** and show it your cat on another day, or a different cat (a photo of a cat on a phone screen works too). Each door says whether it opens and why. If a visitor is a different cat, press **Remember as a neighbour**: the WhoCat door then keeps out cats that look more like that neighbour than like yours. The **Scoreboard** gives the results on 3,593 validation homes, and **Door camera** shows each photo as a blurry, dim door camera would.
+**5. Use it:** step through the guided tour with **Next**, then switch to **Your own cat**: click **Take a photo** (or **Upload**) and enrol your cat with one to three face photos, eyes towards the camera. Then press **Photo a visitor** and show it your cat on another day, or a different cat (a photo of a cat on a phone screen works too). Each door says whether it opens and why. If a visitor is a different cat, press **Remember as a neighbour**: the WhoCat door then keeps out cats that look more like that neighbour than like yours. The **Scoreboard** gives the results on 3,593 validation homes, and **Door camera** shows each photo as a blurry, dim door camera would.
 
 On Windows, if `python` is not found, use `py` instead (`py demo/server.py`). If `pip` fails on macOS or Linux, use `python3 -m pip install -r demo/requirements.txt` and `python3` in the other commands.
 
-**Optional extras.** These need PetFace's research-only licence, so they are not in this repository:
-- *PetFace's door:* download PetFace's released cat model from [github.com/mapooon/PetFace](https://github.com/mapooon/PetFace) and save it as `checkpoints/petface/cat.pt`. The demo then compares PetFace's model with ours on every photo.
-- *Sample homes and guided tour:* 12 held-out PetFace homes with a five-scene tour. They are built from the dataset with `python demo/export_bundle.py` (needs the PetFace data and our embedding caches) and go in `demo/web/bundle/`.
+**Included in this private copy:** PetFace's released cat model (`weights/petface/`, joined by `get_weights.py` too) and 12 held-out PetFace sample homes (`demo/web/bundle/`). So the demo opens on a five-scene guided tour and compares PetFace's model with ours on every photo. Press **Next** (or the right arrow key) through the scenes, then try **Your own cat**. Both come from the PetFace dataset and are for non-commercial research only: please do not redistribute them.
 
 Everything is computed on your computer; photos are never saved or sent anywhere. More detail in [demo/README.md](demo/README.md).
 
