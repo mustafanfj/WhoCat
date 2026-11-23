@@ -164,7 +164,7 @@ def main():
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     ours = Path(args.ours[5:]) if args.ours.startswith("ckpt:") else None
     if ours is not None and not (ours.exists() and (ours.parent / "config.json").exists()):
-        sys.exit(f"Our trained model is missing ({ours}).\nDownload it with:  python demo/get_weights.py")
+        sys.exit(f"Our trained model is missing ({ours}).\nSet it up with:  python demo/get_weights.py")
     names = {"ours": args.ours}
     if args.base == "petface" and not paths.PETFACE_WEIGHTS.exists():
         print(f"Note: PetFace's model not found at {paths.PETFACE_WEIGHTS}; the PetFace door is switched off (optional, see README).")
