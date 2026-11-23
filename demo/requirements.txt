@@ -1,0 +1,7 @@
+# Packages for the live demo only (python demo/server.py). Training needs the full requirements.txt.
+torch
+torchvision
+timm>=1.0.9
+opencv-python
+pillow
+numpy

@@ -37,6 +37,7 @@
     const key = `${src}|${model}|${variant}`;
     if (!embCache.has(key)) {
       const rec = S.bundle.images[src] || S.uploads.find(u => u.src === src);
+      if (!rec || !rec.emb[model]) return null;
       embCache.set(key, decode(rec.emb[model][variant]));
     }
     return embCache.get(key);
@@ -47,7 +48,7 @@
     const key = model + "|" + srcs.join(",");
     if (tplCache.has(key)) return tplCache.get(key);
     const d = S.bundle.dim, t = new Float32Array(d);
-    srcs.forEach(src => { const e = emb(src, model, "clean"); for (let i = 0; i < d; i++) t[i] += e[i]; });
+    for (const src of srcs) { const e = emb(src, model, "clean"); if (!e) return null; for (let i = 0; i < d; i++) t[i] += e[i]; }
     let n = 0; for (let i = 0; i < d; i++) n += t[i] * t[i];
     n = Math.sqrt(n) || 1;
     for (let i = 0; i < d; i++) t[i] /= n;
@@ -65,9 +66,10 @@
     const full = door.rule === "full";
     const t = full ? cfg.t_lookalike[k] : cfg.t_random;
     const m = full ? cfg.margin[k] : null;
-    const x = emb(src, door.model, cam);
-    const so = dot(x, template(enrolled, door.model));
-    const mem = c.memory.filter(n => n.on && n.stored !== src);
+    const x = emb(src, door.model, cam), tpl = template(enrolled, door.model);
+    if (!x || !tpl) return null;
+    const so = dot(x, tpl);
+    const mem = c.memory.filter(n => n.on && n.stored !== src && emb(n.stored, door.model, "clean"));
     const sims = mem.map(n => ({ n, s: dot(x, emb(n.stored, door.model, "clean")) })).sort((a, b) => b.s - a.s);
     const pass1 = so > t;
     const useMem = full && S.memOn && sims.length > 0 && m !== null && m !== undefined;
@@ -221,6 +223,7 @@
     renderAll();
   }
   function renderTour() {
+    if (!S.hasSamples) return;
     const sc = SCENES[S.tour];
     $("#tour").hidden = false;
     $("#tour-count").textContent = `Scene ${S.tour + 1} of ${SCENES.length}`;
@@ -238,6 +241,7 @@
   }
 
   function renderBoard() {
+    if (!S.hasSamples) S.board = "paper";
     const rows = [PF("petface"), PF("ours"), FULL("petface"), FULL("ours")];
     const here = S.board === "here";
     const body = $("#board-body"); body.replaceChildren();
@@ -265,7 +269,7 @@
         [0, 1, 2].map(col => `<td class="num ${val(r, col) === best(col) ? "best" : ""} ${bad(col) ? "bad" : ""}">${cell(r, col)}</td>`).join("");
       body.append(tr);
     });
-    const pf = scoreAll(FULL("petface")), of = scoreAll(FULL("ours"));
+    const pf = here ? scoreAll(FULL("petface")) : null, of = here ? scoreAll(FULL("ours")) : null;
     $("#board-sub").textContent = here
       ? `Every visit to the ${S.bundle.homes.length} sample homes, counted by the page. Rows in use by the two doors above are marked.`
       : "From the paper: 3,593 validation homes, each visited by its owner and three look-alike neighbours.";
@@ -289,10 +293,13 @@
     $("#mine-live").hidden = !S.live;
     $("#mine-off").hidden = S.live;
     $("#visit-btns").hidden = !(mine && S.live);
-    $(".scope").hidden = mine;
+    $(".scope").hidden = mine || !S.hasSamples;
+    $("#tour").hidden = !S.hasSamples;
     const h = S.bundle.homes[S.sample.home];
     $("#crumb").textContent = mine ? "Your own cat / Front door" : `${h.name} / Front door`;
-    $("#visits-sub").textContent = mine
+    $("#visits-sub").textContent = mine && !S.hasSamples
+      ? "Photograph your cat on another day, another cat, or a person holding a photo of a cat. Mark a different cat as a neighbour to see the memory at work."
+      : mine
       ? "Photograph your cat on another day, another cat, or a person holding a photo. Cats from the sample homes are here too, to see strangers kept out."
       : `Cat ${h.owner} lives here and ${h.neighbours.length} look-alike neighbour${h.neighbours.length > 1 ? "s" : ""} come by. All are PetFace validation cats the models never trained on.`;
   }
@@ -371,7 +378,8 @@
     const el = document.createElement("article");
     el.className = "door-card" + (i === 1 ? " ours" : "");
     if (!d) {
-      el.innerHTML = `<header><h3>${name}</h3><p>${sub}</p></header><div class="dverdict idle"><span class="dicon">${MARK.skip}</span><span>Waiting for a visitor</span></div>`;
+      const missing = S.live && S.liveModels && !S.liveModels.includes(door.model) && S.mode === "mine";
+      el.innerHTML = `<header><h3>${name}</h3><p>${sub}</p></header><div class="dverdict idle"><span class="dicon">${MARK.skip}</span><span>${missing ? "Model not installed on this server" : "Waiting for a visitor"}</span></div>${missing ? '<p class="cnote" style="margin:0">PetFace\'s released cat model is optional: see the README to add it.</p>' : ""}`;
       return el;
     }
     const truth = truthOf(v), right = rightCall(truth.kind, d.open);
@@ -505,6 +513,7 @@
         <div class="seg small" role="radiogroup" aria-label="${i === 0 ? "Left" : "Right"} door rule">
           <button role="radio" data-value="naive">Threshold only</button><button role="radio" data-value="full">Full door rule</button></div>`;
       const [segM, segR] = $$(".seg", row);
+      if (S.liveModels && !S.hasSamples) $$("button", segM).forEach(b => { if (!S.liveModels.includes(b.dataset.value)) { b.disabled = true; b.title = "Not installed on this server"; } });
       wireSeg(segM, door.model, val => { door.model = val; renderAll(); });
       wireSeg(segR, door.rule, val => { door.rule = val; renderAll(); });
       cfg.append(row);
@@ -662,22 +671,26 @@
       $("#menu-btn").setAttribute("aria-expanded", String(open));
     });
     document.addEventListener("keydown", ev => { if (ev.key === "Escape") $(".sidebar").classList.remove("open"); });
-    try {
-      if (window.WHOCAT_BUNDLE) S.bundle = window.WHOCAT_BUNDLE;   // single-file build (demo/build_single.py)
-      else {
-        const res = await fetch("bundle/bundle.json");
-        if (!res.ok) throw new Error();
-        S.bundle = await res.json();
+    if (window.WHOCAT_BUNDLE) S.bundle = window.WHOCAT_BUNDLE;   // single-file build (demo/build_single.py)
+    else {
+      for (const url of ["bundle/bundle.json", "models.json"]) {   // models.json: thresholds only, no sample homes
+        try { const res = await fetch(url); if (res.ok) { S.bundle = await res.json(); break; } } catch { /* try the next */ }
       }
-    } catch {
-      $("#doors").innerHTML = '<p class="hint">No sample homes found. Put the exported bundle in demo/web/bundle (demo/export_bundle.py writes it), then reload.</p>';
+    }
+    if (!S.bundle) {
+      $("#doors").innerHTML = '<p class="hint">The demo files are incomplete (demo/web/models.json is missing). Download the repository again.</p>';
       $$("#mode-seg button, #cam-seg button").forEach(b => (b.disabled = true));
       return;
     }
+    S.hasSamples = S.bundle.homes.length > 0;
     S.bundle.hasDoorImages = S.bundle.door_images !== false;
-    if (location.protocol !== "file:") try { const h = await fetch("api/health", { cache: "no-store" }); S.live = h.ok && (await h.json()).ok === true; } catch { S.live = false; }
+    if (location.protocol !== "file:") try {
+      const h = await fetch("api/health", { cache: "no-store" });
+      const hj = h.ok ? await h.json() : {};
+      S.live = hj.ok === true; S.liveModels = hj.models || null;
+    } catch { S.live = false; }
     const chip = $("#mode-chip"); chip.hidden = false;
-    chip.textContent = S.live ? "Live: the models are running on this computer" : `${S.bundle.homes.length} sample homes, scored by the trained models`;
+    chip.textContent = S.live ? "Live: the models are running on this computer" : S.hasSamples ? `${S.bundle.homes.length} sample homes, scored by the trained models` : "Start demo/server.py to use the models";
     chip.classList.toggle("live", S.live);
 
     // strangers for "your own cat": owners of the sample homes
@@ -686,7 +699,14 @@
     const sel = $("#home-select");
     S.bundle.homes.forEach((h, i) => sel.add(new Option(h.name, i)));
     sel.addEventListener("change", () => loadHome(+sel.value));
-    if (/[?&]mode=mine/.test(location.search)) S.mode = "mine";
+    if (/[?&]mode=mine/.test(location.search) || !S.hasSamples) S.mode = "mine";
+    if (!S.hasSamples) {
+      $('#mode-seg [data-value="sample"]').disabled = true;
+      $('#mode-seg [data-value="sample"]').title = "Sample homes need the PetFace bundle (see README)";
+      $('#board-seg [data-value="here"]').disabled = true;
+      S.board = "paper";
+      if (S.liveModels && !S.liveModels.includes("petface")) S.doors = [{ model: "ours", rule: "naive" }, { model: "ours", rule: "full" }];
+    }
     if (location.protocol === "file:") { S.mode = "sample"; $("#mode-seg").hidden = true; }   // opened as a file: no models, so no camera
     wireSeg($("#mode-seg"), S.mode, v => { S.mode = v; renderAll(); });
     wireSeg($("#cam-seg"), S.cam, v => { S.cam = v; renderStage(); renderVisits(); });
@@ -703,6 +723,7 @@
     $("#cam-flip").addEventListener("click", () => { cam.facing = cam.facing === "user" ? "environment" : "user"; startStream(); });
 
     wireSeg($("#board-seg"), S.board, v => { S.board = v; renderBoard(); });
+    if (!S.hasSamples) { renderAll(); document.body.classList.add("ready"); return; }
     SCENES = buildScenes();
     $("#tour-prev").addEventListener("click", () => applyScene(Math.max(0, S.tour - 1)));
     $("#tour-next").addEventListener("click", () => applyScene((S.tour + 1) % SCENES.length));

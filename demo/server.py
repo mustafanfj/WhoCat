@@ -1,8 +1,9 @@
 """Live demo server: the demo page plus an /api/embed endpoint that runs the real models on your photos.
 
-  python demo/export_bundle.py --ours ckpt:../checkpoints/arc_coat_door/best.pt   # once, on the training machine
-  python demo/server.py                       # our model from checkpoints/arc_coat_door, PetFace's from checkpoints/petface
-then open http://localhost:8000 (over SSH: ssh -L 8000:localhost:8000 <machine>). The browser only lets the page
+  python demo/get_weights.py     # once: downloads our trained model into ../checkpoints/arc_coat_door
+  python demo/server.py          # then open http://localhost:8123
+Optional: PetFace's released cat model in ../checkpoints/petface/cat.pt adds the PetFace door, and the
+sample-home bundle in demo/web/bundle adds the guided tour (both need PetFace's research licence). The browser only lets the page
 use the camera on localhost or https, so open it as localhost, not by the machine's IP address.
 
 Uploaded photos go through the OpenCV cat-face detector and the crop calibrated to PetFace's aligned
@@ -160,13 +161,18 @@ def main():
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--calibrate", action="store_true", help="re-fit the detector crop on PetFace (needs the dataset)")
     args = ap.parse_args()
-    if not (HERE / "web" / "bundle" / "bundle.json").exists():
-        sys.exit(f"No bundle in {HERE / 'web' / 'bundle'}. Copy the exported bundle folder there (demo/export_bundle.py makes it).")
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    for need in (Path(args.ours[5:]) if args.ours.startswith("ckpt:") else None, paths.PETFACE_WEIGHTS):
-        if need is not None and not need.exists():
-            sys.exit(f"Missing {need}. Copy the weights there (see demo/README.md), or set WHOCAT_ROOT.")
-    emb = Embedder({"ours": args.ours, "petface": args.base}, dev, args.calibrate)
+    ours = Path(args.ours[5:]) if args.ours.startswith("ckpt:") else None
+    if ours is not None and not (ours.exists() and (ours.parent / "config.json").exists()):
+        sys.exit(f"Our trained model is missing ({ours}).\nDownload it with:  python demo/get_weights.py")
+    names = {"ours": args.ours}
+    if args.base == "petface" and not paths.PETFACE_WEIGHTS.exists():
+        print(f"Note: PetFace's model not found at {paths.PETFACE_WEIGHTS}; the PetFace door is switched off (optional, see README).")
+    else:
+        names["petface"] = args.base
+    if not (HERE / "web" / "bundle" / "bundle.json").exists():
+        print("Note: no sample homes in demo/web/bundle; the page opens on 'Your own cat' (sample homes are optional, see README).")
+    emb = Embedder(names, dev, args.calibrate)
     srv = ThreadingHTTPServer((args.host, args.port), make_handler(emb))
     shown = "localhost" if args.host in ("127.0.0.1", "0.0.0.0") else args.host
     print(f"WhoCat demo on http://{shown}:{args.port}  (device: {dev}). Ctrl+C to stop.")

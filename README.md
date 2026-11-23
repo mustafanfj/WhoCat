@@ -4,7 +4,7 @@ A face-recognising cat flap has to keep out the neighbour's cat, and the neighbo
 WhoCat measures how often cat face models get this wrong, trains a model that gets it wrong less often, and adds a door rule that remembers the neighbours it has already turned away.
 
 **Papers:** [CENG580 final report (PDF)](paper/WhoCat_CENG580_final_report.pdf) · [CSBP441 report (PDF)](paper/WhoCat_CSBP441_report.pdf)
-**Demo:** an interactive front-door simulator in [`demo/`](demo/) ([run it](#demo))
+**Live demo:** test the door with your own cat's photos or webcam in about five minutes, no training needed ([try it](#try-the-live-demo))
 
 ![WhoCat overview: training with coat-aware batches and door/night augmentation, and the two-check door rule](figures/method.png)
 
@@ -40,15 +40,48 @@ What we found:
 
 ![Look-alike neighbours on unseen test cats](figures/paper_lookalikes.png)
 
-## Demo
+## Try the live demo
 
-`demo/` is a front-door simulator: one visitor, the normal door (PetFace model, one threshold) and the WhoCat door (our model and the full door rule) side by side, with both checks and scores. With the live server you can enrol your own cat from the webcam and test visitors.
+A front-door simulator: enrol a cat from one to three photos (webcam or files), then show it visitors and watch two doors decide side by side, with every score and threshold. It runs on a normal laptop; no GPU, no dataset and no training needed.
 
-```bash
-python demo/server.py --port 8123     # then open http://localhost:8123
+**You need:** Python 3.10 or newer ([python.org](https://www.python.org/downloads/); on Windows tick "Add python.exe to PATH" in the installer), Chrome or Edge, and about 2 GB of disk space.
+
+**1. Get the code** (or click **Code → Download ZIP** on this page and unzip it):
+
+```
+git clone https://github.com/mustafanfj/WhoCat.git
+cd WhoCat
 ```
 
-Setup, static mode and the lab-machine tunnel are in [demo/README.md](demo/README.md).
+**2. Install the packages** (a few minutes, once):
+
+```
+pip install -r demo/requirements.txt
+```
+
+**3. Download our trained model** (once; it goes into a `checkpoints` folder inside `WhoCat`):
+
+```
+python demo/get_weights.py
+```
+
+**4. Start the demo:**
+
+```
+python demo/server.py
+```
+
+Wait for `WhoCat demo on http://localhost:8123`, then open **http://localhost:8123** in Chrome or Edge. Use exactly that address: browsers only allow the camera on `localhost`. Stop the demo with Ctrl+C.
+
+**5. Use it:** click **Take a photo** (or **Upload**) and enrol your cat with one to three face photos, eyes towards the camera. Then press **Photo a visitor** and show it your cat on another day, or a different cat (a photo of a cat on a phone screen works too). Each door says whether it opens and why. If a visitor is a different cat, press **Remember as a neighbour**: the WhoCat door then keeps out cats that look more like that neighbour than like yours. The **Scoreboard** gives the results on 3,593 validation homes, and **Door camera** shows each photo as a blurry, dim door camera would.
+
+On Windows, if `python` is not found, use `py` instead (`py demo/server.py`). If `pip` fails on macOS or Linux, use `python3 -m pip install -r demo/requirements.txt` and `python3` in the other commands.
+
+**Optional extras.** These need PetFace's research-only licence, so they are not in this repository:
+- *PetFace's door:* download PetFace's released cat model from [github.com/mapooon/PetFace](https://github.com/mapooon/PetFace) and save it as `checkpoints/petface/cat.pt`. The demo then compares PetFace's model with ours on every photo.
+- *Sample homes and guided tour:* 12 held-out PetFace homes with a five-scene tour. They are built from the dataset with `python demo/export_bundle.py` (needs the PetFace data and our embedding caches) and go in `demo/web/bundle/`.
+
+Everything is computed on your computer; photos are never saved or sent anywhere. More detail in [demo/README.md](demo/README.md).
 
 ## Reproducing the paper
 

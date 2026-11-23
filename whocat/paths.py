@@ -1,8 +1,12 @@
-"""Project paths. PROJECT root = parent of the code/ folder, or $WHOCAT_ROOT."""
+"""Project paths. PROJECT root = $WHOCAT_ROOT, else the parent of the code/ folder when it holds
+data/ or checkpoints/ (the training layout), else this repository folder (a fresh clone for the demo)."""
 import os
 from pathlib import Path
 
-ROOT = Path(os.environ.get("WHOCAT_ROOT", Path(__file__).resolve().parents[2]))
+_REPO = Path(__file__).resolve().parents[1]
+_PARENT = _REPO.parent
+ROOT = Path(os.environ.get("WHOCAT_ROOT") or (
+    _PARENT if (_PARENT / "checkpoints").is_dir() or (_PARENT / "data").is_dir() else _REPO))
 DATA = ROOT / "data"
 PETFACE = DATA / "PetFace"
 IMAGES = PETFACE / "images"            # contains cat/<id>/<nn>.png
