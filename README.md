@@ -3,7 +3,6 @@
 A face-recognising cat flap has to keep out the neighbour's cat, and the neighbour's cat often has the same coat as yours.
 WhoCat measures how often cat face models get this wrong, trains a model that gets it wrong less often, and adds a door rule that remembers the neighbours it has already turned away.
 
-**Papers:** [final report (PDF)](paper/WhoCat_CENG580_final_report.pdf) · [shorter report (PDF)](paper/WhoCat_CSBP441_report.pdf)
 **Live demo:** test the door with your own cat's photos or webcam in about five minutes, no training needed ([try it](#try-the-live-demo))
 
 ![WhoCat overview: training with coat-aware batches and door/night augmentation, and the two-check door rule](figures/method.png)
@@ -129,11 +128,7 @@ paper/       the two reports (PDF)
 edge/        work in progress, not in the reports
 ```
 
-## Authors
 
-CENG580 (Group 5): Mustafa Al Juboori, Mohamed Abdulla Khalfan Almazrouei, Obaid Juma Selayem Alharthi, Suhail Ahmed Abdulla Alblooshi.
-CSBP441 (Group 5): Mustafa Al Juboori, Tahnoon Abdulla Khalfan Almazrouei, Mohamed Jumah Abdulla Alqaydi, Ali Nasser Alghaithi.
-United Arab Emirates University, 2026.
 
 ## Licence
 
