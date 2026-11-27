@@ -225,7 +225,6 @@
   function renderTour() {
     if (!S.hasSamples) return;
     const sc = SCENES[S.tour];
-    $("#tour").hidden = false;
     $("#tour-count").textContent = `Scene ${S.tour + 1} of ${SCENES.length}`;
     $("#tour-title").textContent = sc.title;
     $("#tour-body").textContent = sc.body;
