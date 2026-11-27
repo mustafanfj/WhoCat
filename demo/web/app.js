@@ -294,7 +294,7 @@
     $("#mine-off").hidden = S.live;
     $("#visit-btns").hidden = !(mine && S.live);
     $(".scope").hidden = mine || !S.hasSamples;
-    $("#tour").hidden = !S.hasSamples;
+    $("#tour").hidden = !S.hasSamples || (mine && !(SCENES[S.tour] && SCENES[S.tour].mine));
     const h = S.bundle.homes[S.sample.home];
     $("#crumb").textContent = mine ? "Your own cat / Front door" : `${h.name} / Front door`;
     $("#visits-sub").textContent = mine && !S.hasSamples
